@@ -263,14 +263,19 @@
 
     .bubble-cell {
       position: absolute;
-      /* heart clip-path */
-      clip-path: path('M50 30 C50 15, 30 5, 20 15 C10 25, 10 40, 25 52 L50 75 L75 52 C90 40, 90 25, 80 15 C70 5, 50 15, 50 30 Z');
+      border-radius: 50%;
       overflow: hidden;
       cursor: pointer;
-      filter: drop-shadow(0 3px 10px rgba(26,110,181,0.35));
+      box-shadow: 0 3px 16px var(--shadow), inset 0 0 0 2px rgba(255,255,255,0.6);
       opacity: 0;
       animation: bubblePop 0.5s cubic-bezier(0.22, 1.6, 0.5, 1) forwards;
       will-change: left, top;
+    }
+    .bubble-cell::after {
+      content: ''; position: absolute;
+      top: 10%; left: 15%; width: 32%; height: 24%;
+      background: rgba(255,255,255,0.48); border-radius: 50%;
+      pointer-events: none;
     }
     @keyframes bubblePop {
       0%  { opacity:0; transform:scale(0.1); }
@@ -337,10 +342,10 @@
 
 <!-- ── Intro ──────────────────────────────────────────────────── -->
 <div id="intro">
-  <span class="intro-heart">&#10084;&#65039;</span>
+  <span class="intro-heart">&#128153;</span>
   <p class="intro-title">I made something for you</p>
-  <p class="intro-sub">Tap to open it &#10084;&#65039;</p>
-  <button id="btn-begin">Begin &#10084;&#65039;</button>
+  <p class="intro-sub">Tap to open it &#128153;</p>
+  <button id="btn-begin">Begin &#128153;</button>
 </div>
 
 <!-- ── UI Chrome ──────────────────────────────────────────────── -->
@@ -370,8 +375,8 @@
   <!-- Slide 1: Welcome — no images -->
   <div class="slide active" id="slide-0">
     <div class="card">
-      <span class="big-heart">&#10084;&#65039;</span>
-      <p class="headline">Hi Sayang &#10084;&#65039;</p>
+      <span class="big-heart">&#128153;</span>
+      <p class="headline">Hi Sayang &#128153;</p>
       <p class="subline">I made this for you.</p>
     </div>
   </div>
@@ -419,10 +424,10 @@
   <div class="slide" id="slide-6">
     <div class="card">
       <div class="mini-photos" data-photos></div>
-      <span class="final-heart">&#10084;&#65039;</span>
-      <p class="headline">I love you &#10084;&#65039;</p>
+      <span class="final-heart">&#128153;</span>
+      <p class="headline">I love you &#128153;</p>
       <p class="subline">Can we talk when you're ready?</p>
-      <button id="btn-memories">&#10084;&#65039; See our memories we created</button>
+      <button id="btn-memories">&#128153; See our memories we created</button>
     </div>
   </div>
 
@@ -432,11 +437,11 @@
 
 <!-- ── Memories Wall ───────────────────────────────────────────── -->
 <div id="memories-wall">
-  <span id="wall-label">Our memories &#10084;&#65039;</span>
+  <span id="wall-label">Our memories &#128153;</span>
   <div id="bubble-stage"></div>
 </div>
 
-<button id="btn-back-wall">Do you miss me? &#10084;&#65039;</button>
+<button id="btn-back-wall">Do you miss me? &#128153;</button>
 
 <!-- ── Lightbox ───────────────────────────────────────────────── -->
 <div id="lightbox">
