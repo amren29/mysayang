@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>For You ❤️</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue-light : #eef5ff;
+      --blue-mid   : #b8d4f8;
+      --blue-deep  : #5b9bd5;
+      --blue-dark  : #1a6eb5;
+      --white      : #ffffff;
+      --text-dark  : #1a3a5c;
+      --text-mid   : #3a6d9e;
+      --shadow     : rgba(26, 110, 181, 0.18);
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      background: var(--blue-light);
+      overflow: hidden;
+    }
+
+    /* ── Canvas ───────────────────────────────────────────────── */
+    #bgCanvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+
+    /* ── INTRO OVERLAY ────────────────────────────────────────── */
+    #intro {
+      position: fixed; inset: 0;
+      background: linear-gradient(160deg, #d0e8ff 0%, #eef5ff 60%, #bdd9f7 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 200;
+      transition: opacity 0.9s ease, transform 0.9s ease;
+    }
+    #intro.fade-out { opacity: 0; transform: scale(1.04); pointer-events: none; }
+
+    .intro-heart {
+      font-size: clamp(4rem, 14vw, 7rem);
+      animation: heartbeat 1.6s ease-in-out infinite;
+      margin-bottom: 1.4rem;
+    }
+    .intro-title {
+      font-size: clamp(1.3rem, 4vw, 2rem);
+      color: var(--blue-dark); margin-bottom: 0.5rem;
+      text-align: center; padding: 0 1.5rem;
+    }
+    .intro-sub {
+      font-size: clamp(0.85rem, 2.5vw, 1rem);
+      color: var(--text-mid); margin-bottom: 2.6rem;
+      font-family: 'Helvetica Neue', sans-serif;
+    }
+    #btn-begin {
+      background: linear-gradient(135deg, var(--blue-deep), var(--blue-dark));
+      color: var(--white); border: none; border-radius: 50px;
+      padding: 1rem 3rem; font-size: 1.05rem;
+      font-family: 'Helvetica Neue', sans-serif; letter-spacing: 0.08em;
+      cursor: pointer; box-shadow: 0 6px 28px rgba(26,110,181,0.38);
+      animation: btnPulse 2s ease-in-out infinite;
+      transition: transform 0.15s;
+    }
+    #btn-begin:hover { transform: translateY(-2px); }
+    @keyframes btnPulse {
+      0%,100%{ box-shadow: 0 6px 28px rgba(26,110,181,0.38); }
+      50%    { box-shadow: 0 8px 38px rgba(26,110,181,0.55); }
+    }
+
+    /* ── Main App ─────────────────────────────────────────────── */
+    #app {
+      position: relative; width: 100%; height: 100%; z-index: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+
+    /* ── Progress Bar ─────────────────────────────────────────── */
+    #progress-bar {
+      position: fixed; top: 0; left: 0; height: 4px;
+      background: linear-gradient(90deg, var(--blue-deep), var(--blue-dark));
+      transition: width 0.6s ease; z-index: 10;
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* ── Music Toggle ─────────────────────────────────────────── */
+    #music-panel {
+      position: fixed; top: 12px; left: 14px;
+      display: flex; align-items: center; gap: 7px; z-index: 20;
+    }
+    #btn-music {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 1.5px solid rgba(91,155,213,0.5);
+      background: rgba(255,255,255,0.78); backdrop-filter: blur(8px);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 12px var(--shadow);
+      transition: background 0.2s, transform 0.15s; padding: 0;
+    }
+    #btn-music:hover { background: rgba(184,212,248,0.85); transform: scale(1.1); }
+    #btn-music svg { width: 17px; height: 17px; color: var(--blue-dark); }
+
+    .eq-bars { display:none; gap:2px; align-items:flex-end; height:14px; }
+    #music-panel.playing .eq-bars { display:flex; }
+    .eq-bar {
+      width:3px; border-radius:2px; background: var(--blue-deep);
+      transform-origin:bottom; animation:eqAnim 0.6s ease-in-out infinite alternate;
+    }
+    .eq-bar:nth-child(1){ height:6px;  animation-delay:0s; }
+    .eq-bar:nth-child(2){ height:13px; animation-delay:0.12s; }
+    .eq-bar:nth-child(3){ height:8px;  animation-delay:0.28s; }
+    .eq-bar:nth-child(4){ height:14px; animation-delay:0.07s; }
+    .eq-bar:nth-child(5){ height:5px;  animation-delay:0.22s; }
+    @keyframes eqAnim { from{ transform:scaleY(0.25); } to{ transform:scaleY(1); } }
+
+    /* ── Slide Counter ────────────────────────────────────────── */
+    #slide-counter {
+      position: fixed; top: 14px; right: 20px;
+      font-size: 0.78rem; color: var(--text-mid);
+      letter-spacing: 0.08em; z-index: 10;
+      font-family: 'Helvetica Neue', sans-serif;
+    }
+
+    /* ── Slides ───────────────────────────────────────────────── */
+    .slide {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 2rem 1.5rem;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.9s ease; text-align: center;
+    }
+    .slide.active { opacity: 1; pointer-events: all; }
+
+    /* ── Card ─────────────────────────────────────────────────── */
+    .card {
+      background: rgba(255,255,255,0.82); backdrop-filter: blur(12px);
+      border: 1px solid rgba(184,212,248,0.6); border-radius: 24px;
+      padding: 3rem 2.5rem; max-width: 580px; width: 100%;
+      box-shadow: 0 8px 40px var(--shadow);
+    }
+
+    /* ── Typography ───────────────────────────────────────────── */
+    .headline {
+      font-size: clamp(1.6rem, 5vw, 2.6rem);
+      color: var(--blue-dark); line-height: 1.3; margin-bottom: 0.5rem;
+    }
+    .subline {
+      font-size: clamp(0.95rem, 3vw, 1.2rem);
+      color: var(--text-mid); line-height: 1.7; margin-top: 0.8rem;
+    }
+    .message {
+      font-size: clamp(1.05rem, 3.2vw, 1.35rem);
+      color: var(--text-dark); line-height: 1.8; font-style: italic;
+    }
+
+    /* ── Mini photos (3 per slide) ───────────────────────────── */
+    .mini-photos {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 1.3rem;
+    }
+    .mini-photo {
+      width: 88px; height: 88px;
+      border-radius: 50%;
+      overflow: hidden;
+      box-shadow: 0 4px 18px var(--shadow), inset 0 0 0 2px rgba(255,255,255,0.6);
+      flex-shrink: 0;
+      animation: miniPop 0.5s cubic-bezier(0.22, 1.6, 0.5, 1) both;
+    }
+    .mini-photo:nth-child(2) { animation-delay: 0.1s; }
+    .mini-photo:nth-child(3) { animation-delay: 0.2s; }
+    @keyframes miniPop {
+      from { opacity:0; transform:scale(0.3); }
+      to   { opacity:1; transform:scale(1); }
+    }
+    .mini-photo img { width:100%; height:100%; object-fit:cover; display:block; }
+    @media (max-width: 400px) { .mini-photo { width:68px; height:68px; } }
+
+    /* ── Welcome big heart ────────────────────────────────────── */
+    .big-heart {
+      font-size: clamp(3.5rem, 10vw, 5.5rem);
+      line-height: 1; margin-bottom: 1rem; display: block;
+      animation: heartbeat 1.6s ease-in-out infinite;
+    }
+    @keyframes heartbeat {
+      0%,100%{ transform:scale(1); }
+      14%    { transform:scale(1.18); }
+      28%    { transform:scale(1); }
+      42%    { transform:scale(1.12); }
+      56%    { transform:scale(1); }
+    }
+
+    /* ── Dot Progress ─────────────────────────────────────────── */
+    #dots {
+      position: fixed; bottom: 90px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; gap: 8px; z-index: 10;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--blue-mid);
+      transition: background 0.4s, transform 0.4s;
+    }
+    .dot.active { background: var(--blue-dark); transform: scale(1.35); }
+
+    /* ── Next Button ──────────────────────────────────────────── */
+    #btn-next {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--blue-deep), var(--blue-dark));
+      color: var(--white); border: none; border-radius: 50px;
+      padding: 0.85rem 2.6rem; font-size: 1rem;
+      font-family: 'Helvetica Neue', sans-serif; letter-spacing: 0.06em;
+      cursor: pointer; box-shadow: 0 4px 20px rgba(26,110,181,0.35);
+      transition: transform 0.18s, box-shadow 0.18s, opacity 0.4s; z-index: 10;
+    }
+    #btn-next:hover  { transform:translateX(-50%) translateY(-2px); box-shadow:0 8px 28px rgba(26,110,181,0.4); }
+    #btn-next:active { transform:translateX(-50%) translateY(0); }
+    #btn-next.hidden { opacity:0; pointer-events:none; }
+
+    /* ── Final slide ──────────────────────────────────────────── */
+    .final-heart {
+      font-size: clamp(4rem, 12vw, 7rem);
+      animation: finalPulse 1.2s ease-in-out infinite alternate;
+      display: block; margin-bottom: 0.6rem;
+    }
+    @keyframes finalPulse {
+      from{ transform:scale(1);    filter:drop-shadow(0 0 6px #5b9bd5); }
+      to  { transform:scale(1.15); filter:drop-shadow(0 0 22px #1a6eb5); }
+    }
+
+    #btn-memories {
+      margin-top: 1.8rem;
+      background: linear-gradient(135deg, var(--blue-deep), var(--blue-dark));
+      color: var(--white); border: none; border-radius: 50px;
+      padding: 0.85rem 1.8rem; font-size: 0.95rem;
+      font-family: 'Helvetica Neue', sans-serif;
+      cursor: pointer; box-shadow: 0 4px 20px rgba(26,110,181,0.35);
+      transition: transform 0.18s, box-shadow 0.18s; line-height: 1.4;
+    }
+    #btn-memories:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(26,110,181,0.45); }
+
+    /* ================================================================
+       FULL-SCREEN MEMORIES WALL
+    ================================================================ */
+    #memories-wall {
+      position: fixed; inset: 0; z-index: 50;
+      background: linear-gradient(160deg, #d6eaff 0%, #eef5ff 100%);
+      overflow: hidden;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.7s ease;
+    }
+    #memories-wall.visible { opacity: 1; pointer-events: all; }
+
+    #wall-label {
+      position: absolute; top: 14px; left: 50%;
+      transform: translateX(-50%);
+      font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+      color: var(--blue-dark); white-space: nowrap;
+      z-index: 5; pointer-events: none;
+    }
+
+    .bubble-cell {
+      position: absolute;
+      /* heart clip-path */
+      clip-path: path('M50 30 C50 15, 30 5, 20 15 C10 25, 10 40, 25 52 L50 75 L75 52 C90 40, 90 25, 80 15 C70 5, 50 15, 50 30 Z');
+      overflow: hidden;
+      cursor: pointer;
+      filter: drop-shadow(0 3px 10px rgba(26,110,181,0.35));
+      opacity: 0;
+      animation: bubblePop 0.5s cubic-bezier(0.22, 1.6, 0.5, 1) forwards;
+      will-change: left, top;
+    }
+    @keyframes bubblePop {
+      0%  { opacity:0; transform:scale(0.1); }
+      65% { transform:scale(1.12); }
+      100%{ opacity:1; transform:scale(1); }
+    }
+    .bubble-cell img {
+      width:100%; height:100%; object-fit:cover;
+      display:block; pointer-events:none;
+    }
+    .bubble-cell:active { transform:scale(1.12); transition:transform 0.15s; }
+
+    /* Back / "Do you miss me" button */
+    #btn-back-wall {
+      position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--blue-deep), var(--blue-dark));
+      color: var(--white); border: none; border-radius: 50px;
+      padding: 0.75rem 2.2rem; font-size: 0.92rem;
+      font-family: 'Helvetica Neue', sans-serif; letter-spacing: 0.04em;
+      cursor: pointer; box-shadow: 0 4px 20px rgba(26,110,181,0.38);
+      z-index: 60;
+      opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+    }
+    #btn-back-wall.visible { opacity: 1; pointer-events: all; }
+    #btn-back-wall:hover { transform: translateX(-50%) translateY(-2px); }
+
+    /* Lightbox */
+    #lightbox {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(10, 30, 70, 0.88);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    #lightbox.visible { opacity: 1; pointer-events: all; }
+    #lightbox img {
+      max-width: 92vw; max-height: 90vh;
+      border-radius: 16px; box-shadow: 0 10px 60px rgba(0,0,0,0.5);
+      animation: lbIn 0.3s ease;
+    }
+    @keyframes lbIn {
+      from{ transform:scale(0.88); opacity:0; }
+      to  { transform:scale(1);    opacity:1; }
+    }
+    #lightbox-close {
+      position: absolute; top: 18px; right: 22px;
+      font-size: 2rem; color: var(--white);
+      cursor: pointer; line-height: 1; opacity: 0.8; transition: opacity 0.2s;
+    }
+    #lightbox-close:hover { opacity: 1; }
+
+    @media (max-width: 480px) {
+      .card { padding: 1.6rem 1.2rem; }
+      #btn-next { padding: 0.75rem 2rem; font-size: 0.92rem; }
+    }
+  </style>
+</head>
+<body>
+
+<audio id="bgm" loop preload="auto">
+  <source src="videoplayback.webm" type="audio/webm">
+</audio>
+
+<canvas id="bgCanvas"></canvas>
+
+<!-- ── Intro ──────────────────────────────────────────────────── -->
+<div id="intro">
+  <span class="intro-heart">&#10084;&#65039;</span>
+  <p class="intro-title">I made something for you</p>
+  <p class="intro-sub">Tap to open it &#10084;&#65039;</p>
+  <button id="btn-begin">Begin &#10084;&#65039;</button>
+</div>
+
+<!-- ── UI Chrome ──────────────────────────────────────────────── -->
+<div id="progress-bar"></div>
+<div id="slide-counter"></div>
+<div id="dots"></div>
+
+<div id="music-panel">
+  <button id="btn-music" title="Toggle music">
+    <svg id="icon-note" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M9 17a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm11-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM9 17V5l11-2v10"/>
+    </svg>
+    <svg id="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+      <rect x="6" y="4" width="4" height="16" rx="1"/>
+      <rect x="14" y="4" width="4" height="16" rx="1"/>
+    </svg>
+  </button>
+  <div class="eq-bars">
+    <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
+    <div class="eq-bar"></div><div class="eq-bar"></div>
+  </div>
+</div>
+
+<!-- ── Slides ─────────────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- Slide 1: Welcome — no images -->
+  <div class="slide active" id="slide-0">
+    <div class="card">
+      <span class="big-heart">&#10084;&#65039;</span>
+      <p class="headline">Hi Sayang &#10084;&#65039;</p>
+      <p class="subline">I made this for you.</p>
+    </div>
+  </div>
+
+  <!-- Slide 2: Acknowledgement — no images -->
+  <div class="slide" id="slide-1">
+    <div class="card">
+      <p class="message">"I know you're hurt,<br>and I understand why."</p>
+    </div>
+  </div>
+
+  <!-- Slide 3: Memory + 3 photos -->
+  <div class="slide" id="slide-2">
+    <div class="card">
+      <div class="mini-photos" data-photos></div>
+      <p class="message">"One of my favorite memories with you."</p>
+    </div>
+  </div>
+
+  <!-- Slide 4: Thank you + 3 photos -->
+  <div class="slide" id="slide-3">
+    <div class="card">
+      <div class="mini-photos" data-photos></div>
+      <p class="message">"Thank you for all the beautiful moments<br>we've shared."</p>
+    </div>
+  </div>
+
+  <!-- Slide 5: Apology + 3 photos -->
+  <div class="slide" id="slide-4">
+    <div class="card">
+      <div class="mini-photos" data-photos></div>
+      <p class="message">"I'm truly sorry for hurting you.<br><br>I should have handled things better."</p>
+    </div>
+  </div>
+
+  <!-- Slide 6: You mean so much + 3 photos -->
+  <div class="slide" id="slide-5">
+    <div class="card">
+      <div class="mini-photos" data-photos></div>
+      <p class="message">"You mean so much to me."</p>
+    </div>
+  </div>
+
+  <!-- Slide 7: Final + 3 photos -->
+  <div class="slide" id="slide-6">
+    <div class="card">
+      <div class="mini-photos" data-photos></div>
+      <span class="final-heart">&#10084;&#65039;</span>
+      <p class="headline">I love you &#10084;&#65039;</p>
+      <p class="subline">Can we talk when you're ready?</p>
+      <button id="btn-memories">&#10084;&#65039; See our memories we created</button>
+    </div>
+  </div>
+
+</div>
+
+<button id="btn-next">Next &rarr;</button>
+
+<!-- ── Memories Wall ───────────────────────────────────────────── -->
+<div id="memories-wall">
+  <span id="wall-label">Our memories &#10084;&#65039;</span>
+  <div id="bubble-stage"></div>
+</div>
+
+<button id="btn-back-wall">Do you miss me? &#10084;&#65039;</button>
+
+<!-- ── Lightbox ───────────────────────────────────────────────── -->
+<div id="lightbox">
+  <span id="lightbox-close">&times;</span>
+  <img id="lightbox-img" src="" alt="memory" />
+</div>
+
+<script>
+/* ================================================================
+   PHOTOS
+================================================================ */
+const PHOTOS = [
+  "img/WhatsApp Image 2026-06-23 at 16.47.58.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.47.58 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.47.59.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.00.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.02.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.02 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.03.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.04.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.05.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.05 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.06.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.06 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.07.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.08.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.08 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.09.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.09 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.10.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.11.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.11 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.12.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.12 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.19.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.20.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.20 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.20 (2).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.21.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.22.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.23.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.24.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.24 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.25.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.25 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.26.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.27.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.28.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.28 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.29.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.29 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.30.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.31.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.31 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.32.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.32 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.33.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.33 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.33 (2).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.34.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.34 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.35.jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.35 (1).jpeg",
+  "img/WhatsApp Image 2026-06-23 at 16.48.36.jpeg"
+];
+
+/* Fill every [data-photos] container with 3 unique random photos */
+function pick3(exclude) {
+  const pool = PHOTOS.filter(p => !exclude.includes(p));
+  const out = [];
+  while (out.length < 3 && pool.length) {
+    const i = Math.floor(Math.random() * pool.length);
+    out.push(pool.splice(i, 1)[0]);
+  }
+  return out;
+}
+
+const used = [];
+document.querySelectorAll('[data-photos]').forEach(container => {
+  const picks = pick3(used);
+  used.push(...picks);
+  picks.forEach(src => {
+    const div = document.createElement('div');
+    div.className = 'mini-photo';
+    const img = document.createElement('img');
+    img.src = src; img.alt = 'memory';
+    div.appendChild(img);
+    container.appendChild(div);
+  });
+});
+
+/* Build floating bubble cells */
+const stage = document.getElementById('bubble-stage');
+const bubbleObjs = [];
+
+PHOTOS.forEach((src, i) => {
+  const cell = document.createElement('div');
+  cell.className = 'bubble-cell';
+  cell.style.animationDelay = (i * 0.045) + 's';
+  cell.style.animationPlayState = 'paused';
+  const img = document.createElement('img');
+  img.src = src; img.alt = 'memory'; img.loading = 'lazy';
+  cell.appendChild(img);
+  cell.addEventListener('click', () => openLightbox(src));
+  stage.appendChild(cell);
+  bubbleObjs.push({ el: cell, x: 0, y: 0, vx: 0, vy: 0, r: 0 });
+});
+
+/* ================================================================
+   CANVAS — Blue hearts + bubbles
+================================================================ */
+const canvas = document.getElementById('bgCanvas');
+const ctx    = canvas.getContext('2d');
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+
+class Heart {
+  constructor() { this.reset(true); }
+  reset(init=false) {
+    this.x=Math.random()*canvas.width; this.y=init?Math.random()*canvas.height:canvas.height+30;
+    this.size=9+Math.random()*16; this.vy=0.45+Math.random()*0.65;
+    this.vx=(Math.random()-0.5)*0.45; this.alpha=0.10+Math.random()*0.20;
+    this.phase=Math.random()*Math.PI*2; this.freq=0.01+Math.random()*0.018;
+  }
+  update(){ this.phase+=this.freq; this.y-=this.vy; this.x+=Math.sin(this.phase)*0.55+this.vx; if(this.y<-30)this.reset(); }
+  draw(){
+    ctx.save(); ctx.globalAlpha=this.alpha; ctx.fillStyle='#5b9bd5';
+    ctx.translate(this.x,this.y); ctx.scale(this.size/10,this.size/10);
+    ctx.beginPath(); ctx.moveTo(0,-3);
+    ctx.bezierCurveTo(5,-8,10,-4,0,5); ctx.bezierCurveTo(-10,-4,-5,-8,0,-3);
+    ctx.fill(); ctx.restore();
+  }
+}
+class Bubble {
+  constructor(){ this.reset(true); }
+  reset(init=false){
+    this.x=Math.random()*canvas.width; this.y=init?Math.random()*canvas.height:canvas.height+40;
+    this.r=6+Math.random()*22; this.vy=0.3+Math.random()*0.5;
+    this.alpha=0.06+Math.random()*0.12; this.phase=Math.random()*Math.PI*2;
+    this.freq=0.008+Math.random()*0.012; this.color=Math.random()>0.5?'#b8d4f8':'#ffffff';
+  }
+  update(){ this.phase+=this.freq; this.y-=this.vy; this.x+=Math.sin(this.phase)*0.7; if(this.y<-50)this.reset(); }
+  draw(){
+    ctx.save(); ctx.globalAlpha=this.alpha; ctx.strokeStyle=this.color; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.stroke();
+    ctx.globalAlpha=this.alpha*0.6; ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.arc(this.x-this.r*0.3,this.y-this.r*0.3,this.r*0.22,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+const hearts  = Array.from({length:22},()=>new Heart());
+const bubbles = Array.from({length:18},()=>new Bubble());
+(function loop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  bubbles.forEach(b=>{b.update();b.draw();});
+  hearts.forEach(h=>{h.update();h.draw();});
+  requestAnimationFrame(loop);
+})();
+
+/* ================================================================
+   SLIDESHOW
+================================================================ */
+const slides      = document.querySelectorAll('.slide');
+const btnNext     = document.getElementById('btn-next');
+const progressBar = document.getElementById('progress-bar');
+const counter     = document.getElementById('slide-counter');
+const dotsEl      = document.getElementById('dots');
+const TOTAL       = slides.length;
+let current       = 0;
+
+slides.forEach((_,i)=>{
+  const d=document.createElement('div');
+  d.className='dot'+(i===0?' active':'');
+  dotsEl.appendChild(d);
+});
+
+function goTo(index) {
+  slides[current].classList.remove('active');
+  dotsEl.children[current].classList.remove('active');
+  current=index;
+  slides[current].classList.add('active');
+  dotsEl.children[current].classList.add('active');
+  progressBar.style.width=((current+1)/TOTAL*100)+'%';
+  counter.textContent=(current+1)+' / '+TOTAL;
+  btnNext.classList.toggle('hidden', current===TOTAL-1);
+}
+
+btnNext.addEventListener('click',()=>{ if(current<TOTAL-1) goTo(current+1); });
+
+document.addEventListener('keydown',e=>{
+  if(wallVisible) return;
+  if((e.key==='ArrowRight'||e.key===' ')&&current<TOTAL-1) goTo(current+1);
+  if(e.key==='ArrowLeft'&&current>0) goTo(current-1);
+});
+
+let touchStartX=null;
+document.addEventListener('touchstart',e=>{ touchStartX=e.touches[0].clientX; },{passive:true});
+document.addEventListener('touchend',e=>{
+  if(touchStartX===null) return;
+  const dx=e.changedTouches[0].clientX-touchStartX;
+  if(Math.abs(dx)>50&&!wallVisible){
+    if(dx<0&&current<TOTAL-1) goTo(current+1);
+    if(dx>0&&current>0) goTo(current-1);
+  }
+  touchStartX=null;
+},{passive:true});
+
+goTo(0);
+
+/* ================================================================
+   MEMORIES WALL — physics floating bubbles
+================================================================ */
+const wall        = document.getElementById('memories-wall');
+const btnBack     = document.getElementById('btn-back-wall');
+const btnMemories = document.getElementById('btn-memories');
+let wallVisible   = false;
+let wallRAF       = null;
+
+function initBubbles() {
+  const W = wall.clientWidth;
+  const H = wall.clientHeight;
+  const area = W * H * 0.68;
+  const rawR = Math.sqrt(area / (PHOTOS.length * Math.PI));
+  const r    = Math.min(Math.max(rawR, 28), 58);
+  const diam = r * 2;
+  const cols = Math.ceil(Math.sqrt(PHOTOS.length * (W / H)));
+  const rows = Math.ceil(PHOTOS.length / cols);
+  const cellW = W / cols;
+  const cellH = H / rows;
+
+  bubbleObjs.forEach((b, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    b.r  = r;
+    b.x  = cellW * col + cellW / 2 + (Math.random() - 0.5) * cellW * 0.5;
+    b.y  = cellH * row + cellH / 2 + (Math.random() - 0.5) * cellH * 0.5;
+    b.x  = Math.min(Math.max(b.x, r+2), W-r-2);
+    b.y  = Math.min(Math.max(b.y, r+2), H-r-2);
+    const speed = 0.25 + Math.random() * 0.45;
+    const angle = Math.random() * Math.PI * 2;
+    b.vx = Math.cos(angle) * speed;
+    b.vy = Math.sin(angle) * speed;
+    b.el.style.width  = diam + 'px';
+    b.el.style.height = diam + 'px';
+    b.el.style.left   = (b.x - r) + 'px';
+    b.el.style.top    = (b.y - r) + 'px';
+  });
+}
+
+function stepBubbles() {
+  const W = wall.clientWidth;
+  const H = wall.clientHeight;
+  bubbleObjs.forEach(b => {
+    b.vx += (Math.random()-0.5)*0.025;
+    b.vy += (Math.random()-0.5)*0.025;
+    const maxV = 0.85;
+    b.vx = Math.max(-maxV, Math.min(maxV, b.vx));
+    b.vy = Math.max(-maxV, Math.min(maxV, b.vy));
+    b.x += b.vx; b.y += b.vy;
+    if(b.x-b.r<0)   { b.x=b.r;   b.vx= Math.abs(b.vx); }
+    if(b.x+b.r>W)   { b.x=W-b.r; b.vx=-Math.abs(b.vx); }
+    if(b.y-b.r<0)   { b.y=b.r;   b.vy= Math.abs(b.vy); }
+    if(b.y+b.r>H)   { b.y=H-b.r; b.vy=-Math.abs(b.vy); }
+    b.el.style.left = (b.x-b.r)+'px';
+    b.el.style.top  = (b.y-b.r)+'px';
+  });
+  wallRAF = requestAnimationFrame(stepBubbles);
+}
+
+btnMemories.addEventListener('click', showWall);
+
+function showWall() {
+  wallVisible = true;
+  wall.classList.add('visible');
+  btnBack.classList.add('visible');
+  initBubbles();
+  bubbleObjs.forEach((b, i) => {
+    b.el.style.animationDelay     = (i * 0.04) + 's';
+    b.el.style.animationPlayState = 'running';
+  });
+  clearTimeout(wall._startTimer);
+  wall._startTimer = setTimeout(() => { if(wallVisible) stepBubbles(); }, 2200);
+}
+
+btnBack.addEventListener('click', () => {
+  wallVisible = false;
+  cancelAnimationFrame(wallRAF);
+  wall.classList.remove('visible');
+  btnBack.classList.remove('visible');
+  bubbleObjs.forEach(b => { b.el.style.animationPlayState = 'paused'; });
+  goTo(0);
+});
+
+/* ================================================================
+   LIGHTBOX
+================================================================ */
+const lightbox    = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightbox-img');
+
+function openLightbox(src) { lightboxImg.src=src; lightbox.classList.add('visible'); }
+document.getElementById('lightbox-close').addEventListener('click', ()=>lightbox.classList.remove('visible'));
+lightbox.addEventListener('click', e=>{ if(e.target===lightbox) lightbox.classList.remove('visible'); });
+
+/* ================================================================
+   MUSIC
+================================================================ */
+const bgm        = document.getElementById('bgm');
+const musicPanel = document.getElementById('music-panel');
+const iconNote   = document.getElementById('icon-note');
+const iconPause  = document.getElementById('icon-pause');
+bgm.volume = 0;
+
+function setMusicUI(playing) {
+  iconNote.style.display  = playing ? 'none'  : 'block';
+  iconPause.style.display = playing ? 'block' : 'none';
+  musicPanel.classList.toggle('playing', playing);
+}
+function fadeIn(target, duration) {
+  const step = target / (duration / 50);
+  const t = setInterval(() => {
+    bgm.volume = Math.min(bgm.volume + step, target);
+    if(bgm.volume >= target) clearInterval(t);
+  }, 50);
+}
+function fadeOut(duration) {
+  const step = bgm.volume / (duration / 50);
+  const t = setInterval(() => {
+    bgm.volume = Math.max(bgm.volume - step, 0);
+    if(bgm.volume <= 0) { bgm.pause(); clearInterval(t); }
+  }, 50);
+}
+function startMusic() {
+  bgm.play().then(() => { fadeIn(0.85, 2000); setMusicUI(true); })
+            .catch(() => setMusicUI(false));
+}
+document.getElementById('btn-music').addEventListener('click', () => {
+  if(!bgm.paused) { fadeOut(800); setMusicUI(false); }
+  else            { startMusic(); }
+});
+
+/* ================================================================
+   INTRO
+================================================================ */
+document.getElementById('btn-begin').addEventListener('click', () => {
+  const intro = document.getElementById('intro');
+  intro.classList.add('fade-out');
+  setTimeout(() => { intro.style.display = 'none'; }, 950);
+  startMusic();
+});
+</script>
+</body>
+</html>
